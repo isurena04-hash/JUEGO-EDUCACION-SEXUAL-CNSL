@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Decidir hoy, construir mañana</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fbf4e6;--panel:#fff;--ink:#2b2a33;--line:#d9cdb4;--red:#d62828;--redbg:#fde3e1;--accent:#1b6ca8;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{background:var(--bg);color:var(--ink);font-family:'Fredoka','Trebuchet MS',system-ui,sans-serif;display:flex;flex-direction:column;gap:10px;padding:12px 18px;min-height:600px;overflow-x:auto}
+header{display:flex;align-items:center;justify-content:space-between;gap:16px}
+h1{margin:0;font-size:clamp(22px,3vw,40px);letter-spacing:.5px}
+h1 span{color:var(--accent)}
+.ctrl{display:flex;gap:10px;align-items:center;font-size:15px}
+select,button{font:inherit;color:var(--ink);background:var(--panel);border:2px solid var(--line);border-radius:10px;padding:6px 12px;cursor:pointer}
+button:hover,select:hover{border-color:var(--accent)}
+#board{flex:1;min-height:0;display:grid;grid-template-columns:1.3fr repeat(17,1fr);grid-template-rows:repeat(4,1fr);gap:5px}
+.cell{position:relative;background:var(--panel);border:2px solid var(--line);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:4px 2px;cursor:pointer;min-width:0;overflow:hidden}
+.cell:hover{border-color:var(--accent)}
+.num{font-weight:700;font-size:clamp(14px,1.9vw,26px);line-height:1}
+.cell.red{background:var(--redbg);border-color:var(--red)}
+.cell.red .num{color:var(--red)}
+.go{font-size:clamp(9px,1vw,13px);font-weight:600;color:var(--red);text-align:center;line-height:1.1}
+.go b{display:block;font-size:clamp(14px,1.6vw,22px)}
+.start,.goal{align-items:center;justify-content:center;gap:4px;text-align:center}
+.start{grid-column:1;grid-row:1/5;background:#e3f4e1;border-color:#4fa24a;color:#1d4d1a}
+.goal{background:#fff3c4;border-color:#e0a800;color:#5c4400}
+.start .num,.goal .num{font-size:clamp(14px,1.6vw,22px)}
+.tokens{display:flex;flex-wrap:wrap;gap:3px;justify-content:center;align-content:center;flex:1;width:100%}
+.start .tokens{flex:0 0 auto}
+.tk{width:clamp(18px,2.2vw,30px);height:clamp(18px,2.2vw,30px);border-radius:50%;border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45);display:grid;place-items:center;font-size:clamp(9px,1vw,14px);font-weight:700;color:#fff;text-shadow:0 0 2px #000}
+#teams{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.team{display:flex;align-items:center;gap:8px;background:var(--panel);border:3px solid var(--line);border-radius:14px;padding:6px 14px;cursor:pointer;min-width:130px}
+.team.sel{border-color:var(--ink);box-shadow:0 0 0 3px var(--accent)}
+.team .tk{flex:none;width:30px;height:30px;font-size:14px}
+.team small{display:block;opacity:.7;font-size:12px}
+.hint{text-align:center;font-size:13px;opacity:.75;margin:0}
+</style>
+</head>
+<body>
+<header>
+  <h1>Decidir hoy, <span>construir mañana</span></h1>
+  <div class="ctrl">
+    <label>Equipos <select id="n"><option>5</option><option>6</option><option>7</option><option>8</option></select></label>
+    <button id="reset">Reiniciar fichas</button>
+  </div>
+</header>
+<div id="board"></div>
+<div id="teams"></div>
+<p class="hint">Elige un equipo abajo y toca la casilla donde debe quedar su ficha. Toca «Salida» para devolverla al inicio.</p>
+<script>
+const RED={5:9,11:17,16:19,18:22,23:26,45:48,47:52,51:56,54:62,63:67};
+const COLORS=[["Rojo","#e53935"],["Azul","#1e66d0"],["Verde","#2e9e44"],["Amarillo","#f2b705"],["Naranja","#f57c00"],["Morado","#8e44ad"],["Rosa","#e91e8c"],["Celeste","#00a8c6"]];
+let n=5,sel=0,pos=Array(8).fill(0);
+const board=document.getElementById('board'),teamsEl=document.getElementById('teams');
+function place(i){ // fila/columna serpenteante 17x4
+  const r=Math.floor((i-1)/17),c=(i-1)%17;
+  return {row:r+1,col:(r%2===0?c:16-c)+2};
+}
+function tk(t){return `<span class="tk" style="background:${COLORS[t][1]}">${t+1}</span>`}
+function render(){
+  let h=`<div class="cell start" data-p="0"><div class="num">SALIDA</div><div class="tokens">${[...Array(n).keys()].filter(t=>pos[t]==0).map(tk).join('')}</div></div>`;
+  for(let i=1;i<=68;i++){
+    const {row,col}=place(i),g=RED[i],tokens=[...Array(n).keys()].filter(t=>pos[t]==i).map(tk).join('');
+    const label=i==68?'<div class="num">68 · META</div>':g?`<div class="go"><span class="num">${i}</span><b>Avanza a la ${g}</b></div>`:`<div class="num">${i}</div>`;
+    h+=`<div class="cell ${g?'red':''} ${i==68?'goal':''}" data-p="${i}" style="grid-row:${row};grid-column:${col}">${label}<div class="tokens">${tokens}</div></div>`;
+  }
+  board.innerHTML=h;
+  teamsEl.innerHTML=[...Array(n).keys()].map(t=>`<div class="team ${t==sel?'sel':''}" data-t="${t}">${tk(t)}<div>${COLORS[t][0]}<small>${pos[t]?'Casilla '+pos[t]:'En salida'}</small></div></div>`).join('');
+}
+board.onclick=e=>{const c=e.target.closest('.cell');if(!c)return;pos[sel]=+c.dataset.p;render()};
+teamsEl.onclick=e=>{const t=e.target.closest('.team');if(!t)return;sel=+t.dataset.t;render()};
+document.getElementById('n').onchange=e=>{n=+e.target.value;if(sel>=n)sel=0;render()};
+document.getElementById('reset').onclick=()=>{pos=Array(8).fill(0);sel=0;render()};
+render();
+</script>
+</body>
+</html>
